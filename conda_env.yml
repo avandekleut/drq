@@ -17,7 +17,6 @@ dependencies:
     - tb-nightly
     - imageio
     - imageio-ffmpeg
-    - git+git://github.com/facebookresearch/hydra@0.11_branch
     - pandas
     - ipdb
     - tqdm
