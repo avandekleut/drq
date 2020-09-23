@@ -6,7 +6,6 @@ import copy
 import math
 
 import utils
-import hydra
 
 
 class Encoder(nn.Module):
@@ -79,11 +78,11 @@ class Encoder(nn.Module):
 
 class Actor(nn.Module):
     """torch.distributions implementation of an diagonal Gaussian policy."""
-    def __init__(self, encoder_cfg, action_shape, hidden_dim, hidden_depth,
+    def __init__(self, obs_shape, feature_dim, action_shape, hidden_dim, hidden_depth,
                  log_std_bounds):
         super().__init__()
 
-        self.encoder = hydra.utils.instantiate(encoder_cfg)
+        self.encoder = Encoder(obs_shape, feature_dim)
 
         self.log_std_bounds = log_std_bounds
         self.trunk = utils.mlp(self.encoder.feature_dim, hidden_dim,
@@ -121,10 +120,10 @@ class Actor(nn.Module):
 
 class Critic(nn.Module):
     """Critic network, employes double Q-learning."""
-    def __init__(self, encoder_cfg, action_shape, hidden_dim, hidden_depth):
+    def __init__(self, obs_shape, feature_dim, action_shape, hidden_dim, hidden_depth):
         super().__init__()
 
-        self.encoder = hydra.utils.instantiate(encoder_cfg)
+        self.encoder = Encoder(obs_shape, feature_dim)
 
         self.Q1 = utils.mlp(self.encoder.feature_dim + action_shape[0],
                             hidden_dim, 1, hidden_depth)
@@ -163,10 +162,22 @@ class Critic(nn.Module):
 
 class DRQAgent(object):
     """Data regularized Q: actor-critic method for learning from pixels."""
-    def __init__(self, obs_shape, action_shape, action_range, device,
-                 encoder_cfg, critic_cfg, actor_cfg, discount,
-                 init_temperature, lr, actor_update_frequency, critic_tau,
-                 critic_target_update_frequency, batch_size):
+    def __init__(self,
+            obs_shape,
+            action_shape,
+            action_range,
+            device,
+            feature_dim=50,
+            hidden_dim=1024,
+            hidden_depth=2,
+            log_std_bounds=[-10, 2],
+            discount=0.99,
+            init_temperature=0.1,
+            lr=1e-3,
+            actor_update_frequency=2,
+            critic_tau=0.01,
+            critic_target_update_frequency=2,
+            batch_size=512):
         self.action_range = action_range
         self.device = device
         self.discount = discount
@@ -175,10 +186,11 @@ class DRQAgent(object):
         self.critic_target_update_frequency = critic_target_update_frequency
         self.batch_size = batch_size
 
-        self.actor = hydra.utils.instantiate(actor_cfg).to(self.device)
+        self.actor = Actor(obs_shape, feature_dim, action_shape, hidden_dim, hidden_depth,
+                     log_std_bounds).to(self.device)
 
-        self.critic = hydra.utils.instantiate(critic_cfg).to(self.device)
-        self.critic_target = hydra.utils.instantiate(critic_cfg).to(
+        self.critic = Critic(obs_shape, feature_dim, action_shape, hidden_dim, hidden_depth).to(self.device)
+        self.critic_target = Critic(obs_shape, feature_dim, action_shape, hidden_dim, hidden_depth).to(
             self.device)
         self.critic_target.load_state_dict(self.critic.state_dict())
 
