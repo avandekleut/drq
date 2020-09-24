@@ -56,6 +56,9 @@ class Encoder(nn.Module):
         out = self.head(h)
         if not self.output_logits:
             out = torch.tanh(out)
+        
+        # ME
+        out = torch.cat([out, out], -1)
 
         self.outputs['out'] = out
 
@@ -85,7 +88,7 @@ class Actor(nn.Module):
         self.encoder = Encoder(obs_shape, feature_dim)
 
         self.log_std_bounds = log_std_bounds
-        self.trunk = utils.mlp(self.encoder.feature_dim, hidden_dim,
+        self.trunk = utils.mlp(2 * self.encoder.feature_dim, hidden_dim,
                                2 * action_shape[0], hidden_depth)
 
         self.outputs = dict()
@@ -125,9 +128,9 @@ class Critic(nn.Module):
 
         self.encoder = Encoder(obs_shape, feature_dim)
 
-        self.Q1 = utils.mlp(self.encoder.feature_dim + action_shape[0],
+        self.Q1 = utils.mlp(2 * self.encoder.feature_dim + action_shape[0],
                             hidden_dim, 1, hidden_depth)
-        self.Q2 = utils.mlp(self.encoder.feature_dim + action_shape[0],
+        self.Q2 = utils.mlp(2 * self.encoder.feature_dim + action_shape[0],
                             hidden_dim, 1, hidden_depth)
 
         self.outputs = dict()

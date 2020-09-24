@@ -1,29 +1,22 @@
-import copy
-import math
+from drq import DRQAgent
+from video import VideoRecorder
+from replay_buffer import ReplayBuffer
+from logger import Logger
+import utils
 import os
-import pickle as pkl
-import sys
 import time
-
-import numpy as np
+from datetime import datetime
 
 import dmc2gym
 import torch
-import utils
-from logger import Logger
-from replay_buffer import ReplayBuffer
-from video import VideoRecorder
-
-from drq import DRQAgent
-
-torch.backends.cudnn.benchmark = True
+torch.backends.cudnn.benchmark = True  # GPU alg optimization
 
 
 def make_env(env,
-    seed,
-    image_size,
-    action_repeat,
-    frame_stack):
+             seed,
+             image_size,
+             action_repeat,
+             frame_stack):
     """Helper function to create dm_control environment"""
     if env == 'ball_in_cup_catch':
         domain_name = 'ball_in_cup'
@@ -59,54 +52,56 @@ def make_env(env,
 
 class Experiment(object):
     def __init__(self,
-            log_save_tb = True,
-            log_frequency_step=10000,
-            agent_name='drq',
-            device='cuda',
-#             device='cpu',
-            env='cartpole_swingup',
-            seed=1,
-            image_size=84,
-            action_repeat=8,
-            frame_stack=3,
-            replay_buffer_capacity=100000,
-            image_pad=4,
-            save_video=True
-        ):
-        self.work_dir = os.getcwd()
+                 log_save_tb=True,
+                 log_frequency_step=10000,
+                 agent_name='drq',
+                 device='cuda',
+                 env='cartpole_swingup',
+                 seed=1,
+                 image_size=84,
+                 action_repeat=8,
+                 frame_stack=3,
+                 replay_buffer_capacity=100000,
+                 image_pad=4,
+                 save_video=True
+                 ):
+        work_dir = os.getcwd()
+        datetime_str = datetime.now().strftime('%Y-%m-%d-%H:%M:%S')
+        log_dir = f'logs/{agent_name}_{env}_{seed}_{datetime_str}'
 
-        self.logger = Logger(self.work_dir,
+        self.logger = Logger(log_dir,
                              save_tb=log_save_tb,
                              log_frequency=log_frequency_step,
                              agent=agent_name,
-                             action_repeat=action_repeat)
+                             action_repeat=action_repeat
+                             )
 
         utils.set_seed_everywhere(seed)
-        self.device = torch.device(device)
         self.env = make_env(env, seed, image_size, action_repeat, frame_stack)
 
-        self.agent = DRQAgent(
-            obs_shape=self.env.observation_space.shape,
-            action_shape=self.env.action_space.shape,
-            action_range=(
-                float(self.env.action_space.low.min()),
-                float(self.env.action_space.high.max())
-            ),
-            device=self.device
-        )
+        self.agent = DRQAgent(obs_shape=self.env.observation_space.shape,
+                              action_shape=self.env.action_space.shape,
+                              action_range=(
+                                  float(self.env.action_space.low.min()),
+                                  float(self.env.action_space.high.max())
+                              ),
+                              device=device
+                              )
 
         self.replay_buffer = ReplayBuffer(self.env.observation_space.shape,
                                           self.env.action_space.shape,
                                           replay_buffer_capacity,
-                                          image_pad, self.device)
+                                          image_pad,
+                                          device
+                                          )
 
         self.video_recorder = VideoRecorder(
-            self.work_dir if save_video else None)
+            work_dir if save_video else None)
         self.step = 0
 
     def evaluate(self,
-            num_eval_episodes=10,
-        ):
+                 num_eval_episodes=10,
+                 ):
         average_episode_reward = 0
         for episode in range(num_eval_episodes):
             obs = self.env.reset()
@@ -133,7 +128,7 @@ class Experiment(object):
             num_train_iters=1,
             num_seed_steps=1000,
             eval_frequency=5000
-        ):
+            ):
         episode, episode_reward, episode_step, done = 0, 0, 1, True
         start_time = time.time()
         while self.step < num_train_steps:
@@ -186,6 +181,7 @@ class Experiment(object):
             obs = next_obs
             episode_step += 1
             self.step += 1
+
 
 if __name__ == '__main__':
     Experiment().run()
