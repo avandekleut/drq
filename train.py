@@ -57,7 +57,7 @@ def make_env(env,
     return env
 
 
-class Workspace(object):
+class Experiment(object):
     def __init__(self,
             log_save_tb = True,
             log_frequency_step=10000,
@@ -74,7 +74,6 @@ class Workspace(object):
             save_video=True
         ):
         self.work_dir = os.getcwd()
-        print(f'workspace: {self.work_dir}')
 
         self.logger = Logger(self.work_dir,
                              save_tb=log_save_tb,
@@ -107,7 +106,6 @@ class Workspace(object):
 
     def evaluate(self,
             num_eval_episodes=10,
-
         ):
         average_episode_reward = 0
         for episode in range(num_eval_episodes):
@@ -117,8 +115,7 @@ class Workspace(object):
             episode_reward = 0
             episode_step = 0
             while not done:
-                with utils.eval_mode(self.agent):
-                    action = self.agent.act(obs, sample=False)
+                action = self.agent.act(obs, sample=False)
                 obs, reward, done, info = self.env.step(action)
                 self.video_recorder.record(self.env)
                 episode_reward += reward
@@ -136,7 +133,7 @@ class Workspace(object):
             num_train_iters=1,
             num_seed_steps=1000,
             eval_frequency=5000
-    ):
+        ):
         episode, episode_reward, episode_step, done = 0, 0, 1, True
         start_time = time.time()
         while self.step < num_train_steps:
@@ -168,8 +165,7 @@ class Workspace(object):
             if self.step < num_seed_steps:
                 action = self.env.action_space.sample()
             else:
-                with utils.eval_mode(self.agent):
-                    action = self.agent.act(obs, sample=True)
+                action = self.agent.act(obs, sample=True)
 
             # run training update
             if self.step >= num_seed_steps:
@@ -192,5 +188,4 @@ class Workspace(object):
             self.step += 1
 
 if __name__ == '__main__':
-    workspace = Workspace()
-    workspace.run()
+    Experiment().run()

@@ -208,14 +208,6 @@ class DRQAgent(object):
                                                  lr=lr)
         self.log_alpha_optimizer = torch.optim.Adam([self.log_alpha], lr=lr)
 
-        self.train()
-        self.critic_target.train()
-
-    def train(self, training=True):
-        self.training = training
-        self.actor.train(training)
-        self.critic.train(training)
-
     @property
     def alpha(self):
         return self.log_alpha.exp()
